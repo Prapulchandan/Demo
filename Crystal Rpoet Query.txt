@@ -1,0 +1,1558 @@
+Commission General Ledger Detail Entries Day1
+Commission General Ledger Detail Entries Day2
+Commission General Ledger Detail Entries Day3
+Commission General Ledger Detail Entries Day4
+Commission General Ledger Detail Entries Day5
+
+Query- SELECT AccountNO,
+Description,
+Amount,
+CorD,
+AgentName,
+PolicyNumber,
+CorDSeq,
+company_code,
+WITHHOLD_STATE
+FROM
+(
+SELECT CREDIT_GA1 AccountNO,
+cl.DESCRIPTION Description,
+round(sap.CREDIT_VALUE,2) *-1 AS Amount,
+DECODE(SIGN(sap.CREDIT_VALUE), 1, 'C', -1, 'D') AS CorD,
+POSITION_NAME AgentName,
+POLICY_NUMBER PolicyNumber,
+CREDITSEQ CorDSeq,
+ORG_CCODE company_code,
+NULL AS WITHHOLD_STATE
+FROM aigiext.EXT_SAPGL_DAILY sap,
+TCMP.CS_CLASSIFIER cl
+WHERE --to_date(COMPENSATIONDATE,'YYYYMMDD')= to_date('20190729','YYYYMMDD') AND
+cl.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND cl.classifierid = CREDIT_GA1
+AND cl.effectiveenddate >= to_date(sap.COMPENSATIONDATE,'YYYYMMDD')
+AND cl.effectivestartdate < to_date(sap.COMPENSATIONDATE,'YYYYMMDD')
+UNION ALL
+SELECT CREDIT_GA2 AccountNO,
+cl.DESCRIPTION Description,
+round(sap.CREDIT_VALUE,2) AS Amount,
+DECODE(SIGN(sap.CREDIT_VALUE), -1, 'C', 1, 'D') AS CorD,
+POSITION_NAME AgentName,
+POLICY_NUMBER PolicyNumber,
+CREDITSEQ CorDSeq,
+ORG_CCODE company_code,
+NULL AS WITHHOLD_STATE
+FROM aigiext.EXT_SAPGL_DAILY sap,
+TCMP.CS_CLASSIFIER cl
+WHERE
+--to_date(COMPENSATIONDATE,'YYYYMMDD')= to_date('20190729','YYYYMMDD') AND
+cl.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND cl.classifierid = CREDIT_GA2
+AND cl.effectiveenddate >= to_date(sap.COMPENSATIONDATE,'YYYYMMDD')
+AND cl.effectivestartdate < to_date(sap.COMPENSATIONDATE,'YYYYMMDD')
+UNION ALL
+SELECT dep.GENERICATTRIBUTE1 AS AccountNO,
+cl.description AS Description,
+ROUND(dep.VALUE,2) *-1 AS Amount,
+DECODE(SIGN(dep.value), 1, 'C', -1, 'D') AS CorD,
+TO_CHAR(po.NAME) AS AgentName,
+NULL AS PolicyNumber,
+dep.depositseq AS CorDSeq,
+'AGL' AS Company_Code,
+NULL AS WITHHOLD_STATE
+FROM TCMP.cs_deposit dep,
+TCMP.cs_position po,
+TCMP.cs_period prd,
+TCMP.cs_classifier cl,
+TCMP.cs_calendar cr
+WHERE dep.POSITIONSEQ = po.RULEELEMENTOWNERSEQ
+AND NOT EXISTS
+(SELECT 1
+FROM AIGIEXT.AIGIEXT_INTER_COMPANY_ACCOUNT ICA
+WHERE ICA.positionseq=PO.ruleelementownerseq
+AND ica.periodseq =dep.periodseq
+)
+AND EXISTS
+(SELECT 1
+FROM TCMP.cs_payment p
+WHERE p.positionseq = dep.positionseq
+AND p.periodseq = dep.periodseq
+AND postpipelinerunseq IS NOT NULL
+)
+AND prd.periodseq IN
+(SELECT MAX(pr.periodseq)
+FROM TCMP.cs_pipelinerun pr,
+TCMP.cs_periodtype pt,
+TCMP.cs_period prd
+WHERE prd.periodtypeseq = pt.periodtypeseq
+AND prd.periodseq = pr.periodseq
+AND pr.status = 'Successful'
+AND upper(pr.COMMAND) ='PIPELINERUN' ---Added on 06/15/2018
+AND pt.name IN ( 'week', 'semi-month')
+GROUP BY pt.name
+)
+AND dep.periodseq = prd.periodseq
+AND po.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND po.effectiveenddate >= prd.enddate
+AND po.effectivestartdate < prd.enddate
+AND cl.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND cl.effectiveenddate >= prd.enddate
+AND cl.effectivestartdate < prd.enddate
+and prd.removedate =to_date('01-01-2200','mm-dd-yyyy')
+AND prd.Calendarseq = cr.calendarseq
+AND cr.NAME IN ('AIG_Semi_Monthly_Calendar','AIG_BW_Daily_Calendar')
+AND cr.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND cl.classifierid = dep.GENERICATTRIBUTE1
+UNION ALL
+SELECT dep.GENERICATTRIBUTE2 AS AccountNO,
+cl.description AS Description,
+Round(dep.VALUE,2) AS Amount,
+DECODE(SIGN(dep.value), -1, 'C', 1, 'D') AS CorD,
+TO_CHAR(po.NAME) AS AgentName,
+NULL AS PolicyNumber,
+dep.depositseq AS CorDSeq,
+'AGL' AS Company_Code,
+NULL AS WITHHOLD_STATE
+FROM TCMP.cs_deposit dep,
+TCMP.cs_position po,
+TCMP.cs_period prd,
+TCMP.cs_classifier cl,
+TCMP.cs_calendar cr
+WHERE dep.POSITIONSEQ = po.RULEELEMENTOWNERSEQ
+AND NOT EXISTS
+(SELECT 1
+FROM AIGIEXT.AIGIEXT_INTER_COMPANY_ACCOUNT ICA
+WHERE ICA.positionseq=PO.ruleelementownerseq
+AND ica.periodseq =dep.periodseq
+)
+AND EXISTS
+(SELECT 1
+FROM TCMP.cs_payment p
+WHERE p.positionseq = dep.positionseq
+AND p.periodseq = dep.periodseq
+AND postpipelinerunseq IS NOT NULL
+)
+AND prd.periodseq IN
+(SELECT MAX(pr.periodseq)
+FROM TCMP.cs_pipelinerun pr,
+TCMP.cs_periodtype pt,
+TCMP.cs_period prd
+WHERE prd.periodtypeseq = pt.periodtypeseq
+AND prd.periodseq = pr.periodseq
+AND pr.status = 'Successful'
+AND upper(pr.COMMAND) ='PIPELINERUN' ---Added on 06/15/2018
+AND pt.name IN ( 'week', 'semi-month')
+GROUP BY pt.name
+)
+AND dep.periodseq = prd.periodseq
+AND po.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND po.effectiveenddate >= prd.enddate
+AND po.effectivestartdate < prd.enddate
+AND cl.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND cl.effectiveenddate >= prd.enddate
+AND cl.effectivestartdate < prd.enddate
+and prd.removedate =to_date('01-01-2200','mm-dd-yyyy')
+AND prd.Calendarseq = cr.calendarseq
+AND cr.NAME IN ('AIG_Semi_Monthly_Calendar','AIG_BW_Daily_Calendar')
+AND cr.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND cl.classifierid = dep.GENERICATTRIBUTE2
+UNION ALL
+SELECT Account_Number,
+cl.description AS Description,
+Round(VALUE,2) AS Amount,
+credit_debit_ind AS CorD,
+agent_id AS AgentName,
+Policy_Number,
+positionseq,
+company_code,
+NULL AS WITHHOLD_STATE
+FROM TCMP.cs_classifier cl,
+aigiext.AIGIEXT_INTER_COMPANY_ACCOUNT Inter,
+(SELECT MIN(job_run_date) dt
+FROM aigiext.EXT_CYC_BAL_SMRY_TBL
+WHERE STATUS_FLG = 0
+) m_comp_dt
+WHERE removedate =to_date('01-01-2200','mm-dd-yyyy')
+AND cl.classifierid = Account_Number
+AND TRUNC(m_comp_dt.dt) BETWEEN
+(SELECT DISTINCT startdate
+FROM TCMP.cs_period per
+WHERE removedate =to_date('01-01-2200','mm-dd-yyyy')
+AND per.periodseq=inter.periodseq
+)
+AND (SELECT DISTINCT Enddate
+FROM TCMP.cs_period per
+WHERE removedate =to_date('01-01-2200','mm-dd-yyyy')
+AND per.periodseq=inter.periodseq)
+AND EXISTS
+(SELECT 1
+FROM TCMP.cs_pipelinerun pip
+WHERE pip.periodseq=inter.periodseq
+AND pip.description LIKE '%Post%'
+)
+----Started as part of EP-12049-----
+UNION ALL
+SELECT itax.account_number AccountNO,
+cl.DESCRIPTION Description,
+round(itax.VALUE,2) AS Amount,
+itax.CREDIT_DEBIT_IND AS CorD,
+itax.AGENT_ID AgentName,
+itax.POLICY_NUMBER PolicyNumber,
+0 CorDSeq,
+itax.COMPANY_CODE company_code,
+itax.STATE WITHHOLD_STATE
+FROM aigiext.EXT_INTER_COMPANY_ACCOUNT_TAX itax,
+TCMP.CS_CLASSIFIER cl
+WHERE
+--to_date(COMPENSATIONDATE,'YYYYMMDD')= to_date('20190729','YYYYMMDD') AND
+cl.removedate = to_date('01-01-2200','mm-dd-yyyy')
+AND cl.classifierid = itax.account_number
+AND itax.PERIODSEQ =
+--- added as a part of Issue: Fe vs SAP data issue
+ (SELECT PERIODSEQ 
+    FROM TCMP.CS_PIPELINERUN p
+    WHERE PIPELINERUNSEQ =
+      (SELECT MAX(p.PIPELINERUNSEQ)
+      FROM TCMP.CS_PIPELINERUN p
+      WHERE p.STATUS = 'Successful'
+      and p.COMMAND='PipelineRun'
+      )
+    AND EXISTS
+    (SELECT 1
+    FROM TCMP.cs_pipelinerun pip
+    WHERE pip.periodseq=p.periodseq
+    AND pip.description LIKE '%Post%'
+    ))       
+				
+----Ended as part of EP-12049-----
+/*UNION ALL
+select Account_Number,Description,sum(Amount) Amount,CorD,AgentName,Policy_Number,min(incentiveseq) incentiveseq,COMPANY_CODE,WITHHOLD_STATE
+from
+(SELECT DISTINCT CS_INCENTIVE.GENERICATTRIBUTE1 AS Account_Number,
+CS_CLASSIFIER.description AS Description,
+ROUND(CS_INCENTIVE.VALUE,2) * (-1) AS Amount,
+DECODE(SIGN(CS_INCENTIVE.VALUE), 1, 'C', -1, 'D') AS CorD,
+TO_CHAR(CS_POSITION.NAME) AS AgentName,
+NULL AS Policy_Number,
+CS_INCENTIVE.incentiveseq AS incentiveseq,
+'AGL' AS COMPANY_CODE,
+CS_INCENTIVE.GENERICATTRIBUTE4 AS WITHHOLD_STATE
+FROM TCMP.CS_INCENTIVE CS_INCENTIVE,
+TCMP.CS_POSITION CS_POSITION,
+TCMP.CS_PARTICIPANT CS_PARTICIPANT,
+TCMP.CS_CLASSIFIER CS_CLASSIFIER,
+TCMP.CS_PERIOD CS_PERIOD,
+TCMP.CS_CALENDAR
+WHERE CS_INCENTIVE.POSITIONSEQ = CS_POSITION.RULEELEMENTOWNERSEQ
+AND CS_INCENTIVE.PAYEESEQ = CS_PARTICIPANT.PAYEESEQ
+AND CS_INCENTIVE.PERIODSEQ = CS_PERIOD.PERIODSEQ
+AND CS_INCENTIVE.GENERICATTRIBUTE1 = CS_CLASSIFIER.CLASSIFIERID
+AND CS_PERIOD.CALENDARSEQ = CS_CALENDAR.CALENDARSEQ
+AND CS_INCENTIVE.TENANTID = 'AIGI'
+AND CS_POSITION.TENANTID = 'AIGI'
+AND CS_PARTICIPANT.TENANTID = 'AIGI'
+AND CS_CLASSIFIER.TENANTID = 'AIGI'
+AND CS_PERIOD.TENANTID = 'AIGI'
+AND CS_CALENDAR.TENANTID = 'AIGI'
+AND CS_POSITION.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_PARTICIPANT.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_CLASSIFIER.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_PERIOD.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_CALENDAR.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_POSITION.EFFECTIVEENDDATE >= CS_PERIOD.ENDDATE
+AND CS_POSITION.EFFECTIVESTARTDATE < CS_PERIOD.ENDDATE
+AND CS_PARTICIPANT.EFFECTIVEENDDATE >= CS_PERIOD.ENDDATE
+AND CS_PARTICIPANT.EFFECTIVESTARTDATE < CS_PERIOD.ENDDATE
+AND CS_CLASSIFIER.EFFECTIVEENDDATE >= CS_PERIOD.ENDDATE
+AND CS_CLASSIFIER.EFFECTIVESTARTDATE < CS_PERIOD.ENDDATE
+AND CS_CALENDAR.NAME IN ('AIG_Semi_Monthly_Calendar','AIG_BW_Daily_Calendar')
+AND CS_INCENTIVE.NAME IN ('I_AIG_PRI_PA_WithHoldTax', 'I_AIG_BEN_PA_WithHoldTax', 'I_AIG_PRI_PA_WithHoldTaxForColAndSplit', 'I_LIFE_BSG_LGY_PA_ActualWithHoldTaxForSplit' ,'I_AIG_PRI_CA_WithHoldTax', 'I_AIG_BEN_CA_WithHoldTax', 'I_AIG_PRI_CA_WithHoldTaxForColAndSplit', 'I_LIFE_BSG_LGY_CA_ActualWithHoldTaxForSplit', 'I_AIG_PRI_NE_WithHoldTax', 'I_AIG_BEN_NE_WithHoldTax', 'I_AIG_PRI_NE_WithHoldTaxForColAndSplit', 'I_LIFE_BSG_LGY_NE_ActualWithHoldTaxForSplit')
+AND CS_INCENTIVE.VALUE <>0
+AND CS_PERIOD.PERIODSEQ = --2533274790396946
+(SELECT PERIODSEQ
+FROM TCMP.CS_PIPELINERUN p
+WHERE PIPELINERUNSEQ =
+(SELECT MAX(p.PIPELINERUNSEQ)
+FROM TCMP.CS_PIPELINERUN p
+WHERE p.STATUS = 'Successful'
+and p.COMMAND='PipelineRun'
+)
+AND EXISTS
+(SELECT 1
+FROM TCMP.cs_pipelinerun pip
+WHERE pip.periodseq=p.periodseq
+AND pip.description LIKE '%Post%'
+)
+)
+AND (
+EXISTS (
+SELECT 1
+FROM AIGIEXT.AIGIEXT_INTER_COMPANY_ACCOUNT ICA
+WHERE ICA.positionseq=CS_POSITION.ruleelementownerseq -- ICA.PRODUCERID=PO.NAME
+AND ICA.periodseq =CS_INCENTIVE.periodseq
+)
+OR EXISTS (
+SELECT 1
+FROM TCMP.cs_payment p
+WHERE p.positionseq = CS_INCENTIVE.positionseq
+AND p.periodseq = CS_INCENTIVE.periodseq
+AND postpipelinerunseq IS NOT NULL
+)) 
+UNION ALL
+select Account_Number,Description,sum(Amount) Amount,CorD,AgentName,PolicyNumber,min(incentiveseq) incentiveseq,COMPANY_CODE,WITHHOLD_STATE
+from
+(SELECT DISTINCT CS_INCENTIVE.GENERICATTRIBUTE2 AS Account_Number,
+CS_CLASSIFIER.description AS Description,
+ROUND(CS_INCENTIVE.VALUE,2) AS Amount,
+DECODE(SIGN(CS_INCENTIVE.VALUE), -1, 'C', 1, 'D') AS CorD,
+TO_CHAR(CS_POSITION.NAME) AS AgentName,
+NULL AS PolicyNumber,
+CS_INCENTIVE.incentiveseq AS incentiveseq,
+'AGL' AS COMPANY_CODE,
+CS_INCENTIVE.GENERICATTRIBUTE4 AS WITHHOLD_STATE
+FROM TCMP.CS_INCENTIVE CS_INCENTIVE,
+TCMP.CS_POSITION CS_POSITION,
+TCMP.CS_PARTICIPANT CS_PARTICIPANT,
+TCMP.CS_CLASSIFIER CS_CLASSIFIER,
+TCMP.CS_PERIOD CS_PERIOD,
+TCMP.CS_CALENDAR
+WHERE CS_INCENTIVE.POSITIONSEQ = CS_POSITION.RULEELEMENTOWNERSEQ
+AND CS_INCENTIVE.PAYEESEQ = CS_PARTICIPANT.PAYEESEQ
+AND CS_INCENTIVE.PERIODSEQ = CS_PERIOD.PERIODSEQ
+AND CS_INCENTIVE.GENERICATTRIBUTE2 = CS_CLASSIFIER.CLASSIFIERID
+AND CS_PERIOD.CALENDARSEQ = CS_CALENDAR.CALENDARSEQ
+AND CS_INCENTIVE.TENANTID = 'AIGI'
+AND CS_POSITION.TENANTID = 'AIGI'
+AND CS_PARTICIPANT.TENANTID = 'AIGI'
+AND CS_CLASSIFIER.TENANTID = 'AIGI'
+AND CS_PERIOD.TENANTID = 'AIGI'
+AND CS_CALENDAR.TENANTID = 'AIGI'
+AND CS_POSITION.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_PARTICIPANT.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_CLASSIFIER.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_PERIOD.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_CALENDAR.REMOVEDATE = TO_DATE('22000101','YYYYMMDD')
+AND CS_POSITION.EFFECTIVEENDDATE >= CS_PERIOD.ENDDATE
+AND CS_POSITION.EFFECTIVESTARTDATE < CS_PERIOD.ENDDATE
+AND CS_PARTICIPANT.EFFECTIVEENDDATE >= CS_PERIOD.ENDDATE
+AND CS_PARTICIPANT.EFFECTIVESTARTDATE < CS_PERIOD.ENDDATE
+AND CS_CLASSIFIER.EFFECTIVEENDDATE >= CS_PERIOD.ENDDATE
+AND CS_CLASSIFIER.EFFECTIVESTARTDATE < CS_PERIOD.ENDDATE
+AND CS_CALENDAR.NAME IN ('AIG_Semi_Monthly_Calendar','AIG_BW_Daily_Calendar')
+AND CS_INCENTIVE.NAME IN ('I_AIG_PRI_PA_WithHoldTax', 'I_AIG_BEN_PA_WithHoldTax', 'I_AIG_PRI_PA_WithHoldTaxForColAndSplit', 'I_LIFE_BSG_LGY_PA_ActualWithHoldTaxForSplit' ,'I_AIG_PRI_CA_WithHoldTax', 'I_AIG_BEN_CA_WithHoldTax', 'I_AIG_PRI_CA_WithHoldTaxForColAndSplit', 'I_LIFE_BSG_LGY_CA_ActualWithHoldTaxForSplit', 'I_AIG_PRI_NE_WithHoldTax', 'I_AIG_BEN_NE_WithHoldTax', 'I_AIG_PRI_NE_WithHoldTaxForColAndSplit', 'I_LIFE_BSG_LGY_NE_ActualWithHoldTaxForSplit')
+AND CS_INCENTIVE.VALUE <>0
+AND CS_PERIOD.PERIODSEQ =--2533274790396946
+(SELECT PERIODSEQ
+FROM TCMP.CS_PIPELINERUN p
+WHERE PIPELINERUNSEQ =
+(SELECT MAX(p.PIPELINERUNSEQ)
+FROM TCMP.CS_PIPELINERUN p
+WHERE p.STATUS = 'Successful'
+and p.COMMAND='PipelineRun'
+)
+AND EXISTS
+(SELECT 1
+FROM TCMP.cs_pipelinerun pip
+WHERE pip.periodseq=p.periodseq
+AND pip.description LIKE '%Post%'
+)
+)
+AND (
+EXISTS (
+SELECT 1
+FROM AIGIEXT.AIGIEXT_INTER_COMPANY_ACCOUNT ICA
+WHERE ICA.positionseq=CS_POSITION.ruleelementownerseq -- ICA.PRODUCERID=PO.NAME
+AND ICA.periodseq =CS_INCENTIVE.periodseq
+)
+OR EXISTS (
+SELECT 1
+FROM TCMP.cs_payment p
+WHERE p.positionseq = CS_INCENTIVE.positionseq
+AND p.periodseq = CS_INCENTIVE.periodseq
+AND postpipelinerunseq IS NOT NULL
+))) group by Account_Number,Description,CorD,AgentName,PolicyNumber,COMPANY_CODE,WITHHOLD_STATE*/
+)
+WHERE Amount <> 0
+ORDER BY AccountNo;
+
+
+Report Name: - Daily Agent Balance Day1
+Daily Agent Balance Day2
+Daily Agent Balance Day3
+Daily Agent Balance Day4
+Daily Agent Balance Day5
+
+Query- 
+select taxid,position_id,pay_freq,comm_hold,previous_balance,
+decode(paid_amount,0,
+(case 
+when CURRENT_INCRESS=0 then 
+nvl(WH_Tax,0) 
+else 
+CURRENT_INCRESS-nvl(WH_Tax,0) 
+end),CURRENT_INCRESS) CURRENT_INCRESS,
+decode(current_balance,0,current_balance,(current_balance-nvl(WH_Tax,0))) current_balance,
+paid_amount,
+rolled_from,ROLLED_FROM_TAX_ID,ROLLED_TO,ROLLED_TO_TAX_ID,YTD from(
+select taxid,position_id,max( decode(period_flag,1,pay_freq,'')) pay_freq,
+max( decode(period_flag,1,decode(comm_hold_ind,1,nvl(cp.GENERICATTRIBUTE8,'MC'),comm_hold_ind),'')) comm_hold,
+sum(decode(period_flag,0,current_balance,'0')) previous_balance,
+sum(decode(period_flag,1,nvl(paid_amt,0) + nvl(current_balance,0),0,nvl(current_balance,0)*(-1))) CURRENT_INCRESS,
+sum(decode(period_flag,1,current_balance,'0')) current_balance,
+sum(decode(period_flag,1,nvl(paid_amt,0),'0')) paid_amount ,max(nvl(WH_Tax,0)) WH_Tax,
+max(rolled_from) rolled_from, max(ROLLED_FROM_TAX_ID ) ROLLED_FROM_TAX_ID, max(ROLLED_TO) ROLLED_TO, max(ROLLED_TO_TAX_ID) ROLLED_TO_TAX_ID,
+(select nvl(sum(stmt.GENERICNUMBER8),0) from aigiext.EXT_COMM_STMT_TBL stmt where stmt.PRIMARY_AGENT_ID=position_id  and stmt.REPORT_ID=10 and stmt.SECTION_ID=30  ) YTD
+from aigiext.EXT_DAILY_AGT_BAL_TBL a, TCMP.CS_POSITION cp
+where a.position_id= cp.name
+and sysdate between cp.effectivestartdate and cp.effectiveenddate
+and cp.removedate=to_date('01-01-2200','dd/mm/yyyy') 
+group by a.taxid,a.position_id 
+--, rolled_from, ROLLED_FROM_TAX_ID , ROLLED_TO , ROLLED_TO_TAX_ID
+having  sum(current_balance) <> 0 or sum(decode(period_flag,1,nvl(paid_amt,0) )) <> 0
+)order by  position_id;
+
+
+Report Name: -
+OK2PAY REPORT DAY1
+OK2PAY REPORT DAY2
+OK2PAY REPORT DAY3
+OK2PAY REPORT DAY4
+OK2PAY REPORT DAY5
+
+Query-
+SELECT okr.COMPENSATIONDATE COMPENSATIONDATE,
+  okr.POLICYNUMBER POLICYNUMBER,
+  okr.EVENTTYPE trx_TYPE,
+  okr.ISSUESTATE ISSUESTATE,
+  okr.WRITINGAGENTID WRITINGAGENTID,
+  cf.genericfield2 Upline_id,
+  okr.OKTOPAY_RESPONSE OKTOPAY_RESPONSE,
+ okr.RUNID RUNID,
+ cf.CustomerSpecificErrorCode error_cd,
+ cf.customerspecificerrortext ERROR_DESC
+FROM aigiext.EXT_OK2PAY_TBL okr,pmpro.cso_faillog cf
+WHERE okr.runid = cf.faillogseq
+and okr.OKTOPAY_RESPONSE = 0
+and cf.CustomerSpecificErrorCode IN ('OTSW-603', 'OTSW-604', 'OTSW-605', 'OTSW-615', 'OTSW-616', 'OTSW-617', 'OTSW-618', 'OTSW-619', 'OTSW-620', 'OTSW-621', 'OTSW-622', 'OTSW-623', 'OTSW-624', 'OTSW-625', 'OTSW-626', 'OTSW-627')
+
+
+Report Name:-
+Pay File Report
+
+Query-
+
+SELECT cpa.taxid,
+  cpo.Name,
+  cpa.LastName
+  || ','
+  || cpa.FirstName Agent_name,
+  DECODE(cpo.genericattribute6,'W', cp.STARTDATE, 'SM', cp.STARTDATE,  'D', (cp.ENDDATE - 1),
+  'BW', 
+  (select max(cp1.startdate) from cs_periodcalendar cp1, cs_periodtype cpt where 
+  Cp1.Calendarname = 'AIG_BW_Daily_Calendar' and cp1.periodseq < cp.periodseq
+  and Cp1.Periodtypeseq = Cpt.Periodtypeseq
+  and Cpt.Name = 'week'
+  ) 
+  )pay_startdate,
+  cp.ENDDATE-1 pay_Enddate,
+  sum(cpy.value) value,
+  cp.enddate
+FROM cs_period cp,
+  cs_payment cpy,
+  cs_position cpo,
+  cs_participant cpa,
+  cs_calendar cr
+WHERE cp.periodseq IN
+  (SELECT MAX(pr.periodseq)
+  FROM cs_pipelinerun pr,
+    cs_periodtype pt,
+    cs_period prd
+  WHERE prd.periodtypeseq = pt.periodtypeseq
+  AND prd.periodseq       = pr.periodseq
+  AND pr.status           = 'Successful'
+  AND pt.name            IN ( 'week', 'semi-month')
+  GROUP BY pt.name
+  )
+AND cpy.periodseq          = cp.periodseq
+AND cpy.positionseq        = cpo.ruleelementownerseq
+AND cpy.value             <>0
+AND cpo.payeeseq           = cpa.payeeseq
+AND cpo.removedate         = to_date('01/01/2200', 'mm/dd/yyyy')
+AND cpo.effectiveenddate  >=cp.enddate
+AND cpo.effectivestartdate < cp.enddate
+AND cpa.removedate         = to_date('01/01/2200', 'mm/dd/yyyy')
+AND cpa.effectiveenddate  >=cp.enddate
+AND cpa.effectivestartdate < cp.enddate
+AND cp.Calendarseq        = cr.calendarseq
+AND cr.NAME               IN ('AIG_Semi_Monthly_Calendar','AIG_BW_Daily_Calendar')
+AND cr.removedate          = to_date('01-01-2200','mm-dd-yyyy')
+AND cp.removedate          = to_date('01-01-2200','mm-dd-yyyy')
+group by 
+ cpa.taxid,
+  cpo.Name,
+  cpa.LastName
+  || ','
+  || cpa.FirstName  , cp.STARTDATE,cpo.genericattribute6,
+  cp.enddate,
+  cp.periodseq
+ORDER BY cpa.taxid,
+  cpo.Name
+
+
+
+
+Report Name: -
+Position Setup Accuracy Report Day 1
+Position Setup Accuracy Report Day 2
+Position Setup Accuracy Report Day 3
+Position Setup Accuracy Report Day 4
+Position Setup Accuracy Report Day 5
+
+Query- 
+Subreport1- select distinct rp.name Position_ID, py.payeeid Producer_ID,p.effectivestartdate, p.effectiveenddate
+from aigiext.cs_reducepositions rp, cs_position p, cs_payee py,pmpro.contractver cv, pmpro.contract c
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and c.contractno=cv.contractno
+and c.contractid=rp.name
+and p.name=c.contractid
+and cv.dateexp=22000101 
+and cv.prosta=1 
+and (p.titleseq=5629499535461618 -- No Title
+or p.titleseq is NULL or c.title is null or cv.title is null)
+and py.payeeseq = p.payeeseq
+and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and py.islast = 1
+and py.removedate = to_date('22000101','yyyymmdd')
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and c.contractid not like '%HierRoot%' and c.contractid not like '%DUMMY%' and c.contractid not in ('DEFPOS','DEFPRD')
+
+Subreport2-
+select distinct rp.name POSITIONID,py.payeeid PrimaryPositionID 
+from aigiext.cs_reducepositions rp,
+ tcmp.cs_position p, tcmp.cs_title t, tcmp.cs_payee py, pmpro.contract c, pmpro.contractver cv
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.titleseq = t.RULEELEMENTOWNERSEQ
+and py.payeeseq = p.payeeseq
+and t.NAME not in ('Primary','Collateral','Beneficiary','Internal','NO TITLE')
+and t.ISLAST = 1
+and t.removedate = to_date('22000101','yyyymmdd')
+and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and py.islast = 1
+and py.removedate = to_date('22000101','yyyymmdd')
+and p.name = c.CONTRACTID
+and c.CONTRACTNO=cv.CONTRACTNO
+and cv.PROSTA=1
+and cv.DATEEXP= 22000101
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and not exists(select 1 from cs_positionrelation pr,cs_positionrelationtype prt, aigiext.EXT_CURRENT_STATUS cs
+                where rp.positionseq = pr.CHILDPOSITIONSEQ
+                and prt.name = 'Agent to Primary'
+                and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+                and pr.islast = 1
+                and pr.removedate = to_date('22000101','yyyymmdd')
+                and prt.removedate = to_date('22000101','yyyymmdd')
+                and cs.RUNDATE between pr.effectivestartdate and pr.EFFECTIVEENDDATE)
+
+Subreport3- 
+with a as (
+select distinct rp.name POSITIONID,py.payeeid PRODUCERID, pp.name PrimaryPositionID
+from aigiext.cs_reducepositions rp, cs_position p, cs_position pp, cs_title t,cs_positionrelation pr,cs_positionrelationtype prt,cs_payee py,aigiext.EXT_CURRENT_STATUS cs
+where rp.name = p.name
+and py.payeeseq = p.payeeseq
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.titleseq = t.RULEELEMENTOWNERSEQ
+and pp.titleseq = 5629499534213173 -- 'Primary'
+and pr.PARENTPOSITIONSEQ = pp.RULEELEMENTOWNERSEQ
+and t.NAME not in ('Primary','Collateral''Beneficiary','Internal')
+and prt.name = 'Agent to Primary'
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.CHILDPOSITIONSEQ =rp.positionseq
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and t.ISLAST = 1
+and t.removedate = to_date('22000101','yyyymmdd')
+--and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between p.effectivestartdate and p.effectiveenddate
+--and pp.islast = 1
+and pp.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pp.effectivestartdate and pp.effectiveenddate
+--and pr.islast = 1
+and pr.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pr.effectivestartdate and pr.effectiveenddate
+and prt.removedate = to_date('22000101','yyyymmdd')
+--and py.islast = 1
+and py.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between py.effectivestartdate and py.effectiveenddate
+),
+b as(
+select a.POSITIONID, count(a.positionid) from a
+group by a.POSITIONID
+having count(a.positionid) > 1
+)
+select b.POSITIONID,a.PRODUCERID,a.PrimaryPositionID from a,b
+where a.POSITIONID = b.POSITIONID
+
+Subreport 4-
+select distinct rp.name LEGACYCHILDPOSITION, pp.name LEGACYPARENTPOSITION, 
+prt.name RELATIONSHIP, p.genericattribute10 LEGACYCHILDASSIGNMENTTYPE, pp.genericattribute10 LEGACYPARENTASSIGNMENTTYPE
+from aigiext.cs_reducepositions rp, cs_position p, cs_position pp, cs_title t,cs_title t1,cs_positionrelation pr,cs_positionrelationtype prt,aigiext.EXT_CURRENT_STATUS cs
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.titleseq = t.RULEELEMENTOWNERSEQ
+and pr.PARENTPOSITIONSEQ = pp.RULEELEMENTOWNERSEQ
+and pp.titleseq = t1.RULEELEMENTOWNERSEQ
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and (nvl(p.genericattribute10,'x')<> 'C')
+and t.NAME not in ('Internal')
+and t1.NAME not in ('Internal')
+and prt.name = 'Agent to Collateral'
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.CHILDPOSITIONSEQ =rp.positionseq
+and t.ISLAST = 1
+and t.removedate = to_date('22000101','yyyymmdd')
+and t1.ISLAST = 1
+and t1.removedate = to_date('22000101','yyyymmdd')
+--and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between p.effectivestartdate and p.effectiveenddate
+--and pp.islast = 1
+and pp.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pp.effectivestartdate and pp.effectiveenddate
+--and pr.islast = 1
+and pr.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pr.effectivestartdate and pr.effectiveenddate
+and prt.removedate = to_date('22000101','yyyymmdd')
+
+Subreport5-
+select distinct rp.name LEGACYCHILDPOSITION, pp.name LEGACYPARENTPOSITION, 
+prt.name RELATIONSHIP, p.genericattribute10 LEGACYCHILDASSIGNMENTTYPE, pp.genericattribute10 LEGACYPARENTASSIGNMENTTYPE
+from aigiext.cs_reducepositions rp, cs_position p, cs_position pp, cs_title t,cs_title t1,cs_positionrelation pr,cs_positionrelationtype prt,aigiext.EXT_CURRENT_STATUS cs
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.titleseq = t.RULEELEMENTOWNERSEQ
+and pr.PARENTPOSITIONSEQ = pp.RULEELEMENTOWNERSEQ
+and pp.titleseq = t1.RULEELEMENTOWNERSEQ
+and (nvl(p.genericattribute10,'x') not in ('A','F','R'))
+and t.NAME not in ('Internal')
+and t1.NAME not in ('Internal')
+and prt.name = 'Payee'
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.CHILDPOSITIONSEQ =rp.positionseq
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and t.ISLAST = 1
+and t.removedate = to_date('22000101','yyyymmdd')
+and t1.ISLAST = 1
+and t1.removedate = to_date('22000101','yyyymmdd')
+--and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between p.effectivestartdate and p.effectiveenddate
+--and pp.islast = 1
+and pp.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pp.effectivestartdate and pp.effectiveenddate
+--and pr.islast = 1
+and pr.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pr.effectivestartdate and pr.effectiveenddate
+and prt.removedate = to_date('22000101','yyyymmdd')
+
+Subreport6-
+select distinct rp.name LEGACYCHILDPOSITION, pp.name LEGACYPARENTPOSITION, 
+prt.name RELATIONSHIP, p.genericattribute10 LEGACYCHILDASSIGNMENTTYPE, pp.genericattribute10 LEGACYPARENTASSIGNMENTTYPE
+from aigiext.cs_reducepositions rp, cs_position p, cs_position pp, cs_title t,cs_title t1,cs_positionrelation pr,cs_positionrelationtype prt,aigiext.EXT_CURRENT_STATUS cs
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.titleseq = t.RULEELEMENTOWNERSEQ
+and pr.PARENTPOSITIONSEQ = pp.RULEELEMENTOWNERSEQ
+and pp.titleseq = t1.RULEELEMENTOWNERSEQ
+and nvl(p.genericattribute10,'x') <> 'B'
+and t.NAME not in ('Internal')
+and t1.NAME not in ('Internal')
+and prt.name = 'Beneficiary'
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.CHILDPOSITIONSEQ =rp.positionseq
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and t.ISLAST = 1
+and t.removedate = to_date('22000101','yyyymmdd')
+and t1.ISLAST = 1
+and t1.removedate = to_date('22000101','yyyymmdd')
+--and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and sysdate between p.effectivestartdate and p.effectiveenddate
+--and pp.islast = 1
+and pp.removedate = to_date('22000101','yyyymmdd')
+and sysdate between pp.effectivestartdate and pp.effectiveenddate
+--and pr.islast = 1
+and pr.removedate = to_date('22000101','yyyymmdd')
+and sysdate between pr.effectivestartdate and pr.effectiveenddate
+and prt.removedate = to_date('22000101','yyyymmdd')
+
+Subreport7-
+select distinct rp.name PositionID,py.payeeid PRODUCERID,t.NAME Title,pp.name BeneficiaryID
+from aigiext.cs_reducepositions rp, cs_position p, cs_position pp, cs_title t,cs_title t1,cs_positionrelation pr, aigiext.EXT_CURRENT_STATUS cs,cs_positionrelationtype prt,cs_payee py
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.titleseq = t.RULEELEMENTOWNERSEQ
+and pr.PARENTPOSITIONSEQ = pp.RULEELEMENTOWNERSEQ
+and pp.titleseq = t1.RULEELEMENTOWNERSEQ
+and py.payeeseq = p.payeeseq
+and py.islast = 1
+and py.removedate = to_date('22000101','yyyymmdd')
+--and (p.genericattribute10 is null or p.genericattribute10 = 'S')
+and t.NAME not in ('Internal','Primary')
+and t1.NAME not in ('Internal')
+and prt.name = 'Beneficiary'
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.CHILDPOSITIONSEQ =rp.positionseq
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and t.ISLAST = 1
+and t.removedate = to_date('22000101','yyyymmdd')
+and t1.ISLAST = 1
+and t1.removedate = to_date('22000101','yyyymmdd')
+--and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between p.effectivestartdate and p.effectiveenddate
+--and pp.islast = 1
+and pp.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pp.effectivestartdate and pp.effectiveenddate
+--and pr.islast = 1
+and pr.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pr.effectivestartdate and pr.effectiveenddate
+and prt.removedate = to_date('22000101','yyyymmdd')
+
+Subreport8 -
+select distinct p.name PositionID,py.payeeid PRODUCERID,p.genericattribute10 CHILDASSIGNMENTTYPE, null as Upline
+from  tcmp.cs_position p, aigiext.cs_reducepositions rp,tcmp.cs_payee py,AIGIEXT.EXT_CURRENT_STATUS cs
+where p.genericattribute10 = 'B'
+and p.name not like '%DEFAULT%' and p.name not like '%DUMMY%' and p.name not like '%HierRoot%'
+and p.NAME not in ('DEFPOS','DEFPRD')
+and py.TENANTID='AIGI'
+and py.PAYEESEQ=p.PAYEESEQ
+and py.removedate = to_date('22000101','yyyymmdd')
+and py.EFFECTIVESTARTDATE<=cs.RUNDATE
+and py.EFFECTIVEENDDATE>cs.RUNDATE
+and p.TENANTID='AIGI'
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+--and rp.name = p.name
+and p.removedate = to_date('22000101','yyyymmdd')
+and p.EFFECTIVESTARTDATE<=cs.RUNDATE
+and p.EFFECTIVEENDDATE>cs.RUNDATE
+and not exists
+(select 1
+from tcmp.cs_positionrelation pr,tcmp.cs_positionrelationtype prt
+where prt.TENANTID='AIGI'
+and prt.name = 'Beneficiary'
+and prt.removedate = to_date('22000101','yyyymmdd')
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.TENANTID='AIGI'
+and pr.CHILDPOSITIONSEQ=p.RULEELEMENTOWNERSEQ
+and pr.EFFECTIVESTARTDATE<=cs.RUNDATE
+and pr.EFFECTIVEENDDATE>cs.RUNDATE
+and pr.removedate = to_date('22000101','yyyymmdd')
+) 
+order by 1
+
+Sub Report9- 
+select distinct p.name PositionID,p.genericattribute10 CHILDASSIGNMENTTYPE, py.PAYEEID PRODUCERID, null as Upline
+from  tcmp.cs_position p, aigiext.cs_reducepositions rp, tcmp.cs_payee py, aigiext.EXT_CURRENT_STATUS cs
+where p.genericattribute10 = 'C'
+and p.name not like '%DEFAULT%' and p.name not like '%DUMMY%' and p.name not like '%HierRoot%'
+and p.NAME not in ('DEFPOS','DEFPRD')
+and py.TENANTID='AIGI'
+and p.PAYEESEQ=py.PAYEESEQ
+and py.removedate = to_date('22000101','yyyymmdd')
+and py.EFFECTIVESTARTDATE<=cs.RUNDATE
+and py.EFFECTIVEENDDATE>cs.RUNDATE
+and p.TENANTID='AIGI'
+--and rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.removedate = to_date('22000101','yyyymmdd')
+and p.EFFECTIVESTARTDATE<=cs.RUNDATE
+and p.EFFECTIVEENDDATE>cs.RUNDATE
+and not exists
+(select 1
+from TCMP.cs_positionrelation pr, TCMP.cs_positionrelationtype prt
+where prt.TENANTID='AIGI' 
+and prt.name = 'Agent to Collateral'
+and prt.removedate = to_date('22000101','yyyymmdd')
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.TENANTID='AIGI'
+and pr.CHILDPOSITIONSEQ=p.RULEELEMENTOWNERSEQ
+and pr.EFFECTIVESTARTDATE<=cs.RUNDATE
+and pr.EFFECTIVEENDDATE>cs.RUNDATE
+and pr.removedate = to_date('22000101','yyyymmdd')
+)
+order by 1
+
+Subreport 10-
+select distinct p.name PositionID,p.genericattribute10 CHILDASSIGNMENTTYPE, py.PAYEEID, null as Upline
+from  tcmp.cs_position p, aigiext.cs_reducepositions rp, tcmp.cs_payee py,aigiext.EXT_CURRENT_STATUS cs
+where p.genericattribute10 in ('A','F','R')
+and py.TENANTID='AIGI'
+and p.PAYEESEQ=py.PAYEESEQ
+and py.removedate = to_date('22000101','yyyymmdd')
+and py.EFFECTIVESTARTDATE<=cs.RUNDATE
+and py.EFFECTIVEENDDATE>cs.RUNDATE
+and p.TENANTID='AIGI'
+--and rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.removedate = to_date('22000101','yyyymmdd')
+and p.EFFECTIVESTARTDATE<=cs.RUNDATE
+and p.EFFECTIVEENDDATE>cs.RUNDATE
+and p.name not like '%DEFAULT%' and p.name not like '%DUMMY%' and p.name not like '%HierRoot%'
+and p.NAME not in ('DEFPOS','DEFPRD')
+and not exists 
+(select 1
+from tcmp.cs_positionrelation pr,tcmp.cs_positionrelationtype prt
+where prt.TENANTID='AIGI'
+and prt.name = 'Payee'
+and prt.removedate = to_date('22000101','yyyymmdd')
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.TENANTID='AIGI'
+and p.ruleelementownerseq = pr.childpositionseq
+and pr.EFFECTIVESTARTDATE<=cs.RUNDATE
+and pr.EFFECTIVEENDDATE>cs.RUNDATE
+and pr.removedate = to_date('22000101','yyyymmdd')
+)
+order by 1		
+
+Subreport11-
+select distinct rp.name LEGACYCHILDPOSITION, pp.name LEGACYPARENTPOSITION, 
+prt.name RELATIONSHIP, p.genericattribute10 LEGACYCHILDASSIGNMENTTYPE,
+pp.genericattribute10 LEGACYPARENTASSIGNMENTTYPE
+from aigiext.cs_reducepositions rp, cs_position p, cs_position pp,
+cs_title t,cs_title t1,cs_positionrelation pr,cs_positionrelationtype prt,aigiext.EXT_CURRENT_STATUS cs
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and p.titleseq = t.RULEELEMENTOWNERSEQ
+and pr.PARENTPOSITIONSEQ = pp.RULEELEMENTOWNERSEQ
+and pp.titleseq = t1.RULEELEMENTOWNERSEQ
+and pp.genericattribute10 is not null
+and t.NAME not in ('Internal')
+and t1.NAME not in ('Internal')
+and prt.name in ('Payee','Agent to Collateral','Beneficiary')
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pr.CHILDPOSITIONSEQ =rp.positionseq
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and t.ISLAST = 1
+and t.removedate = to_date('22000101','yyyymmdd')
+and t1.ISLAST = 1
+and t1.removedate = to_date('22000101','yyyymmdd')
+--and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between p.effectivestartdate and p.effectiveenddate
+--and pp.islast = 1
+and pp.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pp.effectivestartdate and pp.effectiveenddate
+--and pr.islast = 1
+and pr.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pr.effectivestartdate and pr.effectiveenddate
+and prt.removedate = to_date('22000101','yyyymmdd')
+
+Subreport12-
+SELECT 
+  distinct p1.name     AS LEGACYCHILDPOSITION,
+  p.name AS  LEGACYPARENTPOSITION,
+  pt.name AS RELATIONSHIP,
+  p1.genericattribute10 AS LEGACYCHILDASSIGNMENTTYPE,
+  p.genericattribute10 AS LEGACYPARENTASSIGNMENTTYPE
+  -- p1.EFFECTIVESTARTDATE,
+  --TO_DATE('01012200','dd-MM-yy') AS EFFECTIVEENDDATE,
+ -- posrel.EFFECTIVESTARTDATE AS RELATIONEFFECTIVESTARTDATE
+FROM cs_position p,
+  cs_position p1,
+  cs_positionrelationtype pt,
+  cs_positionrelation posrel,
+  aigiext.cs_reducepositions rp,
+  aigiext.ext_current_status cs
+WHERE pt.removedate               =TO_DATE('01/01/2200','dd/mm/yyyy')
+AND pt.name                      IN ('Payee','Beneficiary','Agent to Collateral')
+AND posrel.removedate             =TO_DATE('01/01/2200','dd/mm/yyyy')
+AND p.removedate                  =TO_DATE('01/01/2200','dd/mm/yyyy')
+AND p1.removedate                 =TO_DATE('01/01/2200','dd/mm/yyyy')
+AND posrel.effectiveenddate       =TO_DATE('01/01/2200','dd/mm/yyyy')
+and p.TENANTID='AIGI' and p1.TENANTID='AIGI'
+and p.PROCESSINGUNITSEQ=38280596832649218
+and p1.PROCESSINGUNITSEQ=38280596832649218
+--AND p.islast                      = 1
+--AND p1.islast                     = 1
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and cs.rundate between posrel.effectivestartdate and posrel.effectiveenddate
+and cs.rundate between p.effectivestartdate and p.effectiveenddate
+and cs.rundate between p1.effectivestartdate and p1.effectiveenddate
+AND p1.ruleelementownerseq        =posrel.childpositionseq
+AND p.ruleelementownerseq         =posrel.parentpositionseq
+and p.name not like '%HierRoot%'
+AND posrel.positionrelationtypeseq=pt.datatypeseq
+AND rp.name = p1.name
+and rp.positionseq = p1.RULEELEMENTOWNERSEQ
+--and p.genericattribute10 is not null
+and ((p.genericattribute10 is not null and p1.genericattribute10 is not null)
+OR (p.genericattribute10 is not null and p1.genericattribute10 is null)
+OR (p.genericattribute10 is null and p1.genericattribute10 is null))
+
+Subreport13 -
+WITH PLAN_SEARCH AS
+  (SELECT cpa.RULEELEMENTOWNERSEQ title_seq
+  FROM CS_PLANASSIGNABLE CPA,
+    CS_PLAN CP,
+    aigiext.ext_current_status cs
+  WHERE cs.rundate BETWEEN cpa.effectivestartdate AND cpa.effectiveenddate
+  AND cpa.removedate = TO_DATE('22000101','yyyymmdd')
+  AND CPA.PLANSEQ    =CP.RULEELEMENTOWNERSEQ
+  AND cs.rundate BETWEEN cpa.effectivestartdate AND cpa.effectiveenddate
+  AND cpa.removedate = TO_DATE('22000101','yyyymmdd')
+  )
+SELECT -- distinct --- commented by sweta
+  p.name legacychildposition,
+  t.name legacychildtitle,                                        --- added for  EP-24134
+  TO_CHAR(p.EFFECTIVESTARTDATE,'mm/dd/yyyy') legacychildstartdate,--- added for  EP-24134
+  TO_CHAR(p.EFFECTIVEENDDATE,'mm/dd/yyyy') legacychildenddate,  --- added for  EP-24134
+  pp.name legacyparentposition,
+  t1.name legacyparenttitle,                                        --- added for  EP-24134
+  TO_CHAR(pp.EFFECTIVESTARTDATE,'mm/dd/yyyy') legacyparentstartdate,--- added for  EP-24134
+  TO_CHAR(pp.EFFECTIVEENDDATE,'mm/dd/yyyy') legacyparentenddate,  --- added for  EP-24134
+  prt.name relationship,
+  p.genericattribute6 childpayfrequency,
+  pp.genericattribute6 parentpayfrequency
+FROM
+  -- aigiext.cs_reducepositions rp,--- commented by sweta
+  (
+  SELECT positionseq,
+    MAX(name) name
+  FROM aigiext.cs_reducepositions
+  WHERE name IS NOT NULL
+  GROUP BY positionseq
+  ) rp ,
+  cs_position p,
+  cs_position pp,
+  cs_title t,
+  cs_title t1,
+  cs_positionrelation pr,
+  cs_positionrelationtype prt,
+  aigiext.ext_current_status cs,
+  PLAN_SEARCH PS,
+  PLAN_SEARCH PS1
+WHERE
+  -- rp.name = p.name AND --- commented by sweta
+  rp.positionseq = p.ruleelementownerseq
+AND p.titleseq   = t.ruleelementownerseq
+  --  AND p.genericattribute6 <> pp.genericattribute6
+AND pr.parentpositionseq  = pp.ruleelementownerseq
+AND pp.titleseq           = t1.ruleelementownerseq
+AND p.genericattribute10 IN ( 'C', 'A', 'F', 'R', 'B' ) --- commented by sweta
+  --  AND t.name NOT IN (        'Internal'    ) --- commented by sweta
+  --  AND t1.name NOT IN (        'Internal'    ) --- commented by sweta
+AND t.ruleelementownerseq NOT  IN (5629499534213185 )
+AND t1.ruleelementownerseq NOT IN (5629499534213185)
+AND prt.name                   IN ( 'Payee', 'Agent to Collateral', 'Beneficiary' )
+AND pr.positionrelationtypeseq  = prt.datatypeseq
+AND pr.childpositionseq         = rp.positionseq
+AND t.islast                    = 1
+AND t.removedate                = TO_DATE('22000101','yyyymmdd')
+AND t1.islast                   = 1
+AND t1.removedate               = TO_DATE('22000101','yyyymmdd')
+  --and p.islast = 1
+AND p.removedate = TO_DATE('22000101','yyyymmdd')
+AND cs.rundate BETWEEN p.effectivestartdate AND p.effectiveenddate
+  --and pp.islast = 1
+AND pp.removedate = TO_DATE('22000101','yyyymmdd')
+AND cs.rundate BETWEEN pp.effectivestartdate AND pp.effectiveenddate
+  --and pr.islast = 1
+AND pr.removedate = TO_DATE('22000101','yyyymmdd')
+AND cs.rundate BETWEEN pr.effectivestartdate AND pr.effectiveenddate
+AND prt.removedate        = TO_DATE('22000101','yyyymmdd')
+AND p.genericattribute6   = 'BW'
+AND pp.genericattribute6  = 'W'
+AND t.RULEELEMENTOWNERSEQ =PS.title_seq
+AND t1.RULEELEMENTOWNERSEQ=PS1.title_seq
+UNION
+SELECT -- DISTINCT --- commented by sweta
+  p.name legacychildposition,
+  t.name legacychildtitle,
+  TO_CHAR(p.EFFECTIVESTARTDATE,'mm/dd/yyyy') legacychildstartdate,
+  TO_CHAR(p.EFFECTIVEENDDATE,'mm/dd/yyyy') legacychildenddate,
+  pp.name legacyparentposition,
+  t1.name legacyparenttitle,
+  TO_CHAR(pp.EFFECTIVESTARTDATE,'mm/dd/yyyy') legacyparentstartdate,
+  TO_CHAR(pp.EFFECTIVEENDDATE,'mm/dd/yyyy') legacyparentenddate,
+  prt.name relationship,
+  p.genericattribute6 childpayfrequency,
+  pp.genericattribute6 parentpayfrequency
+FROM
+  (SELECT positionseq,
+    MAX(name) name
+  FROM aigiext.cs_reducepositions
+  WHERE name IS NOT NULL
+  GROUP BY positionseq
+  ) rp,
+  cs_position p,
+  cs_position pp,
+  cs_title t,
+  cs_title t1,
+  cs_positionrelation pr,
+  cs_positionrelationtype prt,
+  aigiext.ext_current_status cs,
+  PLAN_SEARCH PS,
+  PLAN_SEARCH PS1
+WHERE
+  --  rp.name = p.name AND --- commented by sweta
+  rp.positionseq = p.ruleelementownerseq
+AND p.titleseq   = t.ruleelementownerseq
+  --   AND p.genericattribute6 <> pp.genericattribute6 --- commented by sweta
+AND p.genericattribute6  = 'BW'
+AND pp.genericattribute6 = 'W'
+AND pr.parentpositionseq = pp.ruleelementownerseq
+AND pp.titleseq          = t1.ruleelementownerseq
+  --  AND t.name NOT IN ( 'Internal' ) --- commented by sweta
+AND t.RULEELEMENTOWNERSEQ <> 5629499534213185
+  --  AND t1.name = 'Primary'  --- commented by sweta
+AND t1.ruleelementownerseq = 5629499534213173
+  --  AND prt.name = 'Agent to Primary'   --- commented by sweta
+AND prt.datatypeseq = 5348024557502648
+AND rp.name NOT LIKE '%DEFAULT%'
+AND rp.name NOT LIKE '%DUMMY%'
+  --  AND rp.name NOT IN ('DEFPOS','DEFPRD'  )  --- commented by sweta
+AND rp.positionseq NOT        IN ( 578712552118574131,578712552118580152)
+AND pr.positionrelationtypeseq = prt.datatypeseq
+AND pr.childpositionseq        = rp.positionseq
+AND t.islast                   = 1
+AND t.removedate               = TO_DATE('22000101','yyyymmdd')
+AND t1.islast                  = 1
+AND t1.removedate              = TO_DATE('22000101','yyyymmdd')
+  --and p.islast = 1
+AND p.removedate = TO_DATE('22000101','yyyymmdd')
+AND cs.rundate BETWEEN p.effectivestartdate AND p.effectiveenddate
+  --and pp.islast = 1
+AND pp.removedate = TO_DATE('22000101','yyyymmdd')
+AND cs.rundate BETWEEN pp.effectivestartdate AND pp.effectiveenddate
+  --and pr.islast = 1
+AND pr.removedate = TO_DATE('22000101','yyyymmdd')
+AND cs.rundate BETWEEN pr.effectivestartdate AND pr.effectiveenddate
+AND prt.removedate        = TO_DATE('22000101','yyyymmdd')
+AND t.RULEELEMENTOWNERSEQ =PS.title_seq
+AND t1.RULEELEMENTOWNERSEQ=PS1.title_seq
+ORDER BY 1
+
+Subreport14-
+select RULEELEMENTOWNERSEQ,parentName POSITIONNAME,PAYEEID,Paymethod,title,assigntype from
+((Select parentp.RULEELEMENTOWNERSEQ,parentP.NAME parentName,parentpa.PAYEEID,parentP.GENERICATTRIBUTE7 Paymethod,
+parenttitle.NAME title,parentP.GENERICATTRIBUTE10 assigntype
+from AIGIEXT.CS_REDUCEPOSITIONS rp,
+tcmp.cs_position childP,TCMP.CS_POSITIONRELATION pr,TCMP.CS_POSITIONRELATIONTYPE prt, TCMP.CS_POSITION parentP, TCMP.CS_PAYEE parentpa,
+TCMP.CS_TITLE parenttitle,AIGIEXT.EXT_CURRENT_STATUS ext
+---Index: TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+where childP.TENANTID='AIGI'
+and rp.POSITIONSEQ=childP.RULEELEMENTOWNERSEQ
+and childP.REMOVEDATE=to_date('22000101','yyyymmdd')
+and childP.EFFECTIVESTARTDATE<=ext.RUNDATE
+and childP.EFFECTIVEENDDATE>ext.RUNDATE
+and childP.GENERICATTRIBUTE10 in ('B','C')
+---Index: TENANTID, CHILDPOSITIONSEQ, EFFECTIVESTARTDATE, EFFECTIVEENDDATE
+and pr.TENANTID='AIGI'
+and childP.RULEELEMENTOWNERSEQ=pr.CHILDPOSITIONSEQ
+and pr.EFFECTIVESTARTDATE<=ext.RUNDATE
+and pr.EFFECTIVEENDDATE>ext.RUNDATE
+and pr.POSITIONRELATIONTYPESEQ=prt.DATATYPESEQ
+and Pr.REMOVEDATE=to_date('22000101','yyyymmdd')
+--TENANTID, NAME, REMOVEDATE
+and prt.TENANTID='AIGI'
+and prt.NAME in ('Beneficiary','Agent to Collateral')
+and prt.REMOVEDATE=to_date('22000101','yyyymmdd')
+---Index: TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and ParentP.TENANTID='AIGI'
+and pr.PARENTPOSITIONSEQ=parentP.RULEELEMENTOWNERSEQ
+and parentP.REMOVEDATE=to_date('22000101','yyyymmdd')
+and parentP.EFFECTIVESTARTDATE<=ext.RUNDATE
+and parentP.EFFECTIVEENDDATE>ext.RUNDATE
+and parentP.GENERICATTRIBUTE7 is null
+and parentP.name not like '%HierRoot%'
+--TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and parenttitle.TENANTID='AIGI'
+and parentP.TITLESEQ=parenttitle.RULEELEMENTOWNERSEQ
+and parenttitle.REMOVEDATE=to_date('22000101','yyyymmdd')
+and parenttitle.EFFECTIVESTARTDATE<=ext.RUNDATE
+and parenttitle.EFFECTIVEENDDATE>ext.RUNDATE
+--TENANTID, PAYEESEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and parentpa.TENANTID='AIGI'
+and parentpa.PAYEESEQ=parentP.PAYEESEQ
+and parentpa.REMOVEDATE=to_date('22000101','yyyymmdd')
+and parentpa.EFFECTIVESTARTDATE<=ext.RUNDATE
+and parentpa.EFFECTIVEENDDATE>ext.RUNDATE)
+union
+(Select parentPri.RULEELEMENTOWNERSEQ,parentPri.NAME parentName,parentpa.PAYEEID,parentPri.GENERICATTRIBUTE7 Paymethod,
+Primarytitle.NAME title,parentPri.GENERICATTRIBUTE10 assigntype
+from AIGIEXT.CS_REDUCEPOSITIONS rp,
+tcmp.cs_position childP,TCMP.CS_POSITIONRELATION pr,TCMP.CS_POSITIONRELATIONTYPE prt, TCMP.CS_POSITION parentPos, TCMP.CS_POSITION parentPri,
+TCMP.CS_PAYEE parentpa,
+TCMP.CS_TITLE Primarytitle,AIGIEXT.EXT_CURRENT_STATUS ext
+---Index: TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+where childP.TENANTID='AIGI'
+and rp.POSITIONSEQ=childP.RULEELEMENTOWNERSEQ
+and childP.REMOVEDATE=to_date('22000101','yyyymmdd')
+and childP.EFFECTIVESTARTDATE<=ext.RUNDATE
+and childP.EFFECTIVEENDDATE>ext.RUNDATE
+and childP.GENERICATTRIBUTE10 in ('A','F','R')
+---Index: TENANTID, CHILDPOSITIONSEQ, EFFECTIVESTARTDATE, EFFECTIVEENDDATE
+and pr.TENANTID='AIGI'
+and childP.RULEELEMENTOWNERSEQ=pr.CHILDPOSITIONSEQ
+and pr.EFFECTIVESTARTDATE<=ext.RUNDATE
+and pr.EFFECTIVEENDDATE>ext.RUNDATE
+and pr.POSITIONRELATIONTYPESEQ=prt.DATATYPESEQ
+and Pr.REMOVEDATE=to_date('22000101','yyyymmdd')
+--TENANTID, NAME, REMOVEDATE
+and prt.TENANTID='AIGI'
+and prt.NAME in ('Payee')
+and prt.REMOVEDATE=to_date('22000101','yyyymmdd')
+---Index: TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and parentPos.TENANTID='AIGI'
+and pr.PARENTPOSITIONSEQ=parentPos.RULEELEMENTOWNERSEQ
+and parentPos.REMOVEDATE=to_date('22000101','yyyymmdd')
+and parentPos.EFFECTIVESTARTDATE<=ext.RUNDATE
+and parentPos.EFFECTIVEENDDATE>ext.RUNDATE
+and parentPos.PAYEESEQ=parentPri.PAYEESEQ
+and parentPri.GENERICATTRIBUTE7 is null
+and parentPri.REMOVEDATE=to_date('22000101','yyyymmdd')
+and parentPri.EFFECTIVESTARTDATE<=ext.RUNDATE
+and parentPri.EFFECTIVEENDDATE>ext.RUNDATE
+and parentPos.name not like '%HierRoot%'
+--TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and Primarytitle.TENANTID='AIGI'
+and parentPri.TITLESEQ=Primarytitle.RULEELEMENTOWNERSEQ
+and Primarytitle.REMOVEDATE=to_date('22000101','yyyymmdd')
+and Primarytitle.EFFECTIVESTARTDATE<=ext.RUNDATE
+and Primarytitle.EFFECTIVEENDDATE>ext.RUNDATE
+and Primarytitle.name='Primary'
+--TENANTID, PAYEESEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and parentpa.TENANTID='AIGI'
+and parentpa.PAYEESEQ=parentPri.PAYEESEQ
+and parentpa.REMOVEDATE=to_date('22000101','yyyymmdd')
+and parentpa.EFFECTIVESTARTDATE<=ext.RUNDATE
+and parentpa.EFFECTIVEENDDATE>ext.RUNDATE)
+union
+(Select p.RULEELEMENTOWNERSEQ,p.NAME parentName,pa.PAYEEID,p.GENERICATTRIBUTE7 Paymethod,
+t.NAME title,p.GENERICATTRIBUTE10 assigntype
+from AIGIEXT.CS_REDUCEPOSITIONS rp,
+tcmp.cs_position p,TCMP.CS_PAYEE pa,
+TCMP.CS_TITLE t,AIGIEXT.EXT_CURRENT_STATUS ext
+---Index: TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+where P.TENANTID='AIGI'
+and rp.POSITIONSEQ=p.RULEELEMENTOWNERSEQ
+and p.REMOVEDATE=to_date('22000101','yyyymmdd')
+and p.EFFECTIVESTARTDATE<=ext.RUNDATE
+and p.EFFECTIVEENDDATE>ext.RUNDATE
+and p.GENERICATTRIBUTE10 in ('S')
+and p.GENERICATTRIBUTE7 is null
+--TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and t.TENANTID='AIGI'
+and p.TITLESEQ=t.RULEELEMENTOWNERSEQ
+and t.REMOVEDATE=to_date('22000101','yyyymmdd')
+and t.EFFECTIVESTARTDATE<=ext.RUNDATE
+and t.EFFECTIVEENDDATE>ext.RUNDATE
+--TENANTID, PAYEESEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and pa.TENANTID='AIGI'
+and pa.PAYEESEQ=p.PAYEESEQ
+and pa.REMOVEDATE=to_date('22000101','yyyymmdd')
+and pa.EFFECTIVESTARTDATE<=ext.RUNDATE
+and pa.EFFECTIVEENDDATE>ext.RUNDATE)
+union
+(Select p.RULEELEMENTOWNERSEQ,p.NAME parentName,pa.PAYEEID,p.GENERICATTRIBUTE7 Paymethod,
+t.NAME title,p.GENERICATTRIBUTE10 assigntype
+from AIGIEXT.CS_REDUCEPOSITIONS rp,
+tcmp.cs_position p,TCMP.CS_PAYEE pa,
+TCMP.CS_TITLE t,AIGIEXT.EXT_CURRENT_STATUS ext
+---Index: TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+where P.TENANTID='AIGI'
+and rp.POSITIONSEQ=p.RULEELEMENTOWNERSEQ
+and p.REMOVEDATE=to_date('22000101','yyyymmdd')
+and p.EFFECTIVESTARTDATE<=ext.RUNDATE
+and p.EFFECTIVEENDDATE>ext.RUNDATE
+and p.GENERICATTRIBUTE7 is null
+--TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and t.TENANTID='AIGI'
+and p.TITLESEQ=t.RULEELEMENTOWNERSEQ
+and t.REMOVEDATE=to_date('22000101','yyyymmdd')
+and t.EFFECTIVESTARTDATE<=ext.RUNDATE
+and t.EFFECTIVEENDDATE>ext.RUNDATE
+and t.NAME='Primary'
+--TENANTID, PAYEESEQ, REMOVEDATE, EFFECTIVESTARTDATE
+and pa.TENANTID='AIGI'
+and pa.PAYEESEQ=p.PAYEESEQ
+and pa.REMOVEDATE=to_date('22000101','yyyymmdd')
+and pa.EFFECTIVESTARTDATE<=ext.RUNDATE
+and pa.EFFECTIVEENDDATE>ext.RUNDATE)) pos
+where exists (select 1 from TCMP.CS_DEPOSIT d
+where d.positionseq=pos.RULEELEMENTOWNERSEQ
+and d.value<>0
+and d.UNITTYPEFORVALUE=1970324836974593
+and d.periodseq=(SELECT PERIODSEQ
+    FROM TCMP.CS_PIPELINERUN p
+    WHERE PIPELINERUNSEQ =
+      (SELECT MAX(p.PIPELINERUNSEQ)
+      FROM TCMP.CS_PIPELINERUN p
+      WHERE p.STATUS = 'Successful'
+      and p.COMMAND='PipelineRun'
+      )))
+
+Subreport 15-
+select distinct  
+rp.name LEGACY_POSITION, p.GENERICATTRIBUTE4 ADA_ERA_CONTRACT_CODE, P.GENERICDATE3 ADA_START_DATE, P.GENERICDATE4 ADA_END_DATE,
+P.GENERICDATE1 ERA_START_DATE, P.GENERICDATE2 ERA_END_DATE
+from aigiext.cs_reducepositions rp,
+ cs_position p
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and ((p.GENERICDATE1 between p.genericdate3 and p.genericdate4) or 
+     (p.GENERICDATE2 between p.genericdate3 and p.genericdate4) or
+     (p.GENERICDATE3 between p.genericdate1 and p.genericdate2) or 
+     (p.GENERICDATE4 between p.genericdate1 and p.genericdate2))
+and p.GENERICATTRIBUTE4 is not null
+and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+
+Subreport16 -
+select distinct  
+rp.name LEGACY_POSITION, p.GENERICATTRIBUTE4 ADA_ERA_CONTRACT_CODE, P.GENERICDATE3 ADA_START_DATE, P.GENERICDATE4 ADA_END_DATE,
+P.GENERICDATE1 ERA_START_DATE, P.GENERICDATE2 ERA_END_DATE
+from aigiext.cs_reducepositions rp, cs_position p
+where rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and ((p.GENERICDATE1 is null and p.GENERICDATE2 is not null)
+or (p.GENERICDATE1 is not null and p.GENERICDATE2 is  null))
+and p.GENERICATTRIBUTE4 is not null
+and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+
+Subreport17- 
+SELECT DISTINCT rp.name LEGACY_POSITION,
+  p.GENERICATTRIBUTE4 ADA_ERA_CONTRACT_CODE,
+  P.GENERICDATE3 ADA_START_DATE,
+  P.GENERICDATE4 ADA_END_DATE,
+  P.GENERICDATE1 ERA_START_DATE,
+  P.GENERICDATE2 ERA_END_DATE
+FROM aigiext.cs_reducepositions rp,
+  cs_position p
+  WHERE rp.name            = p.name
+  AND rp.positionseq       = p.RULEELEMENTOWNERSEQ
+and (p.GENERICDATE1   IS NOT NULL
+OR p.GENERICDATE2       IS NOT NULL
+OR p.GENERICDATE3       IS NOT NULL
+OR p.GENERICDATE4       IS NOT NULL)
+AND p.GENERICATTRIBUTE4 IS NULL
+AND p.islast             = 1
+AND p.removedate         = to_date('22000101','yyyymmdd')
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+order by 1
+
+Subreport 18-
+SELECT DISTINCT 
+    p1.name AS DownlinePositionId,
+      p.name AS UplinePositionId,
+--      pt.name AS RELATIONSHIP,
+--      p1.genericattribute10 AS LEGACYCHILDASSIGNMENTTYPE,
+--      p.genericattribute10 AS LEGACYPARENTASSIGNMENTTYPE,
+      p.genericnumber6 AS DownlinePercent
+      --TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+    FROM cs_position p,
+      cs_position p1,
+      cs_positionrelationtype pt,
+      cs_positionrelation posrel,
+      cs_title t,
+      aigiext.EXT_CURRENT_STATUS css
+    WHERE p.TENANTID ='AIGI'
+    AND p.ruleelementownerseq =posrel.parentpositionseq
+    AND p.removedate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND css.rundate>=P.EFFECTIVESTARTDATE
+    and css.rundate<P.EFFECTIVEENDDATE
+    AND p.PROCESSINGUNITSEQ =38280596832649218
+    AND p1.TENANTID ='AIGI'
+    AND p1.ruleelementownerseq =posrel.childpositionseq
+    AND p1.removedate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND css.rundate>=P1.EFFECTIVESTARTDATE
+    and css.rundate<P1.EFFECTIVEENDDATE  
+    AND p1.PROCESSINGUNITSEQ =38280596832649218
+    AND p1.TITLESEQ = t.RULEELEMENTOWNERSEQ
+    AND t.name = 'Primary'
+    AND t.removedate =TO_DATE('01/01/2200','dd/mm/yyyy') 
+    AND css.rundate>=t.EFFECTIVESTARTDATE
+    and css.rundate<t.EFFECTIVEENDDATE
+    AND posrel.positionrelationtypeseq=pt.datatypeseq
+    AND posrel.removedate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND posrel.effectiveenddate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND pt.name = 'Beneficiary'
+    AND pt.removedate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND p1.name in (
+    SELECT  distinct
+    prmry.name AS LEGACYCHILDPOSITION
+    FROM cs_position p,
+      cs_position prmry,
+      cs_positionrelationtype pt,
+      cs_positionrelation posrel,
+      (select distinct positionseq from aigiext.cs_reducepositions) rp,
+      cs_title t,
+     aigiext.EXT_CURRENT_STATUS css1
+        --TENANTID, RULEELEMENTOWNERSEQ, REMOVEDATE, EFFECTIVESTARTDATE
+        --TENANTID, PARENTPOSITIONSEQ, CHILDPOSITIONSEQ, POSITIONRELATIONTYPESEQ, REMOVEDATE, EFFECTIVESTARTDATE
+    WHERE p.TENANTID ='AIGI'
+    AND p.ruleelementownerseq =posrel.parentpositionseq
+    AND p.removedate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND css1.rundate>=P.EFFECTIVESTARTDATE
+    and css1.rundate<P.EFFECTIVEENDDATE
+    AND p.PROCESSINGUNITSEQ =38280596832649218
+    AND prmry.TENANTID ='AIGI'
+    AND rp.positionseq = prmry.RULEELEMENTOWNERSEQ
+    AND prmry.removedate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND css1.rundate>=prmry.EFFECTIVESTARTDATE
+    and css1.rundate<prmry.EFFECTIVEENDDATE
+    AND prmry.PROCESSINGUNITSEQ =38280596832649218
+   -- AND rp.name = prmry.name
+    AND prmry.TITLESEQ = t.RULEELEMENTOWNERSEQ
+    AND t.name = 'Primary'
+    AND t.removedate =TO_DATE('01/01/2200','dd/mm/yyyy') 
+    AND css1.rundate>=t.EFFECTIVESTARTDATE
+    and css1.rundate<t.EFFECTIVEENDDATE
+    AND posrel.positionrelationtypeseq=pt.datatypeseq
+    AND posrel.removedate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND posrel.effectiveenddate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND pt.name = 'Beneficiary'
+    AND pt.removedate =TO_DATE('01/01/2200','dd/mm/yyyy')
+    AND prmry.ruleelementownerseq =posrel.childpositionseq    
+--    AND prmry.name in('1000581241')---shaukat test purpose----1000581241 TST 1000000004 DEV3
+    AND prmry.genericattribute10 = 'B'
+    AND p.name not like '%Hier%'
+--    and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+    group by   prmry.name having sum (nvl(p.genericnumber6,0.0))<>1)
+    order by 1
+
+Sub Report 19-
+SELECT 
+  p1.name     AS LEGACYCHILDPOSITION,
+  p.name AS  LEGACYPARENTPOSITION,
+  pt.name AS RELATIONSHIP,
+  p1.genericattribute10 AS LEGACYCHILDASSIGNMENTTYPE,
+  p.genericattribute10 AS LEGACYPARENTASSIGNMENTTYPE
+ -- p1.EFFECTIVESTARTDATE,
+  --TO_DATE('01012200','dd-MM-yy') AS EFFECTIVEENDDATE,
+ -- posrel.EFFECTIVESTARTDATE AS RELATIONEFFECTIVESTARTDATE
+FROM cs_position p,
+  cs_position p1,
+  cs_positionrelationtype pt,
+  cs_positionrelation posrel
+  ,aigiext.cs_reducepositions rp,
+  aigiext.EXT_CURRENT_STATUS cs
+WHERE pt.removedate               =TO_DATE('01/01/2200','dd/mm/yyyy')
+AND pt.name                      IN ('Payee','Beneficiary','Agent to Collateral')
+AND posrel.removedate             =TO_DATE('01/01/2200','dd/mm/yyyy')
+AND p.removedate                  =TO_DATE('01/01/2200','dd/mm/yyyy')
+AND p1.removedate                 =TO_DATE('01/01/2200','dd/mm/yyyy')
+AND posrel.effectiveenddate       =TO_DATE('01/01/2200','dd/mm/yyyy')
+and p.TENANTID='AIGI' and p1.TENANTID='AIGI'
+and p.PROCESSINGUNITSEQ=38280596832649218
+and p1.PROCESSINGUNITSEQ=38280596832649218
+--AND p.islast                      = 1
+--AND p1.islast                     = 1
+and cs.rundate between p.effectivestartdate and p.effectiveenddate
+and cs.rundate between p1.effectivestartdate and p1.effectiveenddate
+and cs.rundate between posrel.effectivestartdate and posrel.effectiveenddate
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+AND p1.ruleelementownerseq        =posrel.childpositionseq
+AND p.ruleelementownerseq         =posrel.parentpositionseq
+AND posrel.positionrelationtypeseq=pt.datatypeseq
+AND (p1.genericattribute10   IN ('S')
+OR p.genericattribute10      IN ('S'))
+AND rp.name = p1.name
+and rp.positionseq = p1.RULEELEMENTOWNERSEQ
+
+Subreport20 -
+select distinct rp.name POSITION_ID, pp.name Primary_Position_Producer, pph.name Primary_position_Hierarchy
+from cs_position p, cs_position pp, cs_position pph, cs_positionrelation pr, cs_positionrelationtype prt, 
+cs_title t1, AIGIEXT.CS_REDUCEPOSITIONS rp,aigiext.EXT_CURRENT_STATUS cs
+where p.RULEELEMENTOWNERSEQ = pr.CHILDPOSITIONSEQ
+and pph.RULEELEMENTOWNERSEQ = pr.PARENTPOSITIONSEQ
+and pp.TITLESEQ = t1.RULEELEMENTOWNERSEQ
+and pr.POSITIONRELATIONTYPESEQ = prt.DATATYPESEQ
+and pp.payeeseq = p.payeeseq
+and pp.name <> pph.name
+and pph.name <> 'AtoPHierRoot'
+and prt.name = 'Agent to Primary'
+and t1.name = 'Primary'
+and rp.name = p.name
+and rp.positionseq = p.RULEELEMENTOWNERSEQ
+and rp.name not like '%DEFAULT%' and rp.name not like '%DUMMY%' and rp.NAME not in ('DEFPOS','DEFPRD')
+and t1.ISLAST = 1
+and t1.removedate = to_date('22000101','yyyymmdd')
+--and p.islast = 1
+and p.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between p.effectivestartdate and p.effectiveenddate
+--and pp.islast = 1
+and pp.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pp.effectivestartdate and pp.effectiveenddate
+--and pph.islast = 1
+and pph.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pph.effectivestartdate and pph.effectiveenddate
+--and pr.islast = 1
+and pr.removedate = to_date('22000101','yyyymmdd')
+and cs.rundate between pr.effectivestartdate and pr.effectiveenddate
+and prt.removedate = to_date('22000101','yyyymmdd')
+order by pp.name
+
+Subreport 21-
+select c1.contractid PARENTPOSITIONNAME,c.contractid CHILDPOSITIONNAME,
+c.title Child_Title,c1.title Parent_Title,
+to_char(to_date(cv.dateeff,'yyyymmdd'),'mm/dd/yyyy') Child_Dateeff,
+to_char(to_date(cv.DATEEXP,'yyyymmdd'),'mm/dd/yyyy') Child_Dateexp,
+(select producerid from pmpro.producer p where p.producerno=c.producerno) Child_ProducerID,
+(select producerid from pmpro.producer p where p.producerno=c1.producerno) Parent_ProducerID,
+h.hierarchytypeid POSITIONRELATIONTYPE,
+--cv.CONTRACTSTATUSCD StatusCode
+cv.GARNISHMENTAMOUNTORPERCENT
+from pmpro.Contract c,
+pmpro.ContractVer cv,
+pmpro.ContractProdHierarchy cph,PMPRO.HIERARCHYTYPE h,
+pmpro.Contract c1
+where c.contractno=cv.contractno
+and cv.prosta=1
+and cv.dateexp=22000101
+and cv.contractverno= cph.contractverno
+and cph.contractnohierarchy= c1.contractno
+and H.HIERARCHYTYPENO=CPH.HIERARCHYTYPENO
+and h.hierarchytypeid='Beneficiary'
+and c1.contractid in (select cp.contractid parent
+from pmpro.contract c
+,pmpro.contractver cv,pmpro.producer p
+,PMPRO.CONTRACTPRODHIERARCHY cph,PMPRO.HIERARCHYTYPE h
+,pmpro.contract cp
+where p.producerno=c.producerno
+and c.contractno=cv.contractno
+and cv.contractverno=cph.contractverno
+and CPH.HIERARCHYTYPENO=H.HIERARCHYTYPENO
+and cp.contractno=CPH.CONTRACTNOHIERARCHY
+and cv.dateexp=22000101 and cv.prosta=1
+and H.HIERARCHYTYPEID='Beneficiary'
+group by cp.contractid having sum(cv.GARNISHMENTAMOUNTORPERCENT)<>100) and c1.contractid not like '%HierRoot%'
+order by 1
+	
+Subreport21 -
+SELECT p.NAME PositionID,
+  pay.PAYEEID,
+  DECODE(pa.GENERICATTRIBUTE2,'E','Employee','A','Internal/Agency',pa.GENERICATTRIBUTE2) ProducerType
+FROM
+  (SELECT DISTINCT positionseq FROM AIGIEXT.CS_REDUCEPOSITIONS
+  ) rp,
+  TCMP.CS_POSITION p,
+  TCMP.CS_PARTICIPANT pa,
+  TCMP.CS_PAYEE pay,
+  AIGIEXT.EXT_CURRENT_STATUS ext,
+  pmpro.contract c,
+  pmpro.contractver cv,
+  pmpro.producer pro
+WHERE p.TENANTID    ='AIGI'
+AND p.TITLESEQ NOT IN
+  (SELECT t.RULEELEMENTOWNERSEQ
+  FROM tcmp.cs_title t
+  WHERE t.name   IN ('Internal', 'NO TITLE')
+  AND ext.RUNDATE>=t.EFFECTIVESTARTDATE
+  AND ext.RUNDATE <t.EFFECTIVEENDDATE
+  AND t.REMOVEDATE= to_date('01-JAN-2200','dd-MON-yyyy')
+  )
+AND rp.POSITIONSEQ                     =p.RULEELEMENTOWNERSEQ
+AND p.removedate                       = to_date('01-JAN-2200','DD-MON-YYYY')
+AND ext.RUNDATE                       >=p.EFFECTIVESTARTDATE
+AND ext.RUNDATE                        <p.EFFECTIVEENDDATE
+AND pa.TENANTID                        ='AIGI'
+AND p.PAYEESEQ                         =pa.PAYEESEQ
+AND pa.REMOVEDATE                      = to_date('01-JAN-2200','DD-MON-YYYY')
+AND ext.RUNDATE                       >=pa.EFFECTIVESTARTDATE
+AND ext.RUNDATE                        <pa.EFFECTIVEENDDATE
+AND pa.TENANTID                        ='AIGI'
+AND pay.PAYEESEQ                       =pa.PAYEESEQ
+AND pay.REMOVEDATE                     =to_date('01-JAN-2200','DD-MON-YYYY')
+AND ext.RUNDATE                       >=pay.EFFECTIVESTARTDATE
+AND ext.RUNDATE                        <pay.EFFECTIVEENDDATE
+AND NVL(pa.GENERICATTRIBUTE2,'X') NOT IN ('I','F')
+AND p.name NOT LIKE '%HierRoot%'
+AND p.name      =c.CONTRACTID
+AND c.CONTRACTNO=cv.contractno
+AND cv.PROSTA   =1
+AND cv.dateexp  =22000101
+and c.PRODUCERNO=pro.PRODUCERNO
+ORDER BY 2,1
+
+Sub Report22-
+SELECT c.CONTRACTID PMPROCONTRACTID,
+  pro.PRODUCERID PMPROPRODUCERID,
+  pv.PRODUCERTYPE PMPROPRODUCERTYPE,
+  pv.DATEEFF PMPRODATEEFF,
+  pv.DATEEXP PMPRODATEEXP,
+  p.name TCMPPOSITIONID
+FROM
+  (SELECT DISTINCT positionseq FROM AIGIEXT.CS_REDUCEPOSITIONS
+  ) rp,
+  TCMP.CS_POSITION p,
+  AIGIEXT.EXT_CURRENT_STATUS ext,
+  pmpro.contract c,
+  pmpro.contractver cv,
+  PMPRO.PRODUCER pro,
+  pmpro.producerver pv
+WHERE p.TENANTID    ='AIGI'
+AND p.TITLESEQ NOT IN
+  (SELECT t.RULEELEMENTOWNERSEQ
+  FROM tcmp.cs_title t
+  WHERE t.name   IN ('Internal', 'NO TITLE')
+  AND ext.RUNDATE>=t.EFFECTIVESTARTDATE
+  AND ext.RUNDATE <t.EFFECTIVEENDDATE
+  AND t.REMOVEDATE= to_date('01-JAN-2200','dd-MON-yyyy')
+  )
+AND rp.POSITIONSEQ=p.RULEELEMENTOWNERSEQ
+AND p.REMOVEDATE  =to_date('01-JAN-2200','dd-MON-yyyy')
+AND ext.RUNDATE  >=p.EFFECTIVESTARTDATE
+and ext.RUNDATE<p.EFFECTIVEENDDATE
+--------AND islast      =1
+AND p.name      =c.CONTRACTID
+AND c.contractno=cv.contractno
+AND cv.prosta   =1
+AND cv.dateexp  =22000101
+AND p.name NOT LIKE '%HierRoot%'
+AND c.producerno  =pro.PRODUCERNO
+AND pro.producerno=pv.PRODUCERNO
+AND pv.prosta     =1
+AND pv.dateexp    =22000101
+AND NOT EXISTS
+  (SELECT 1
+  FROM TCMP.CS_PARTICIPANT pa
+  WHERE pa.PAYEESEQ=p.PAYEESEQ
+  AND pa.REMOVEDATE=to_date('01-JAN-2200','dd-MON-yyyy')
+  AND ext.RUNDATE >=pa.EFFECTIVESTARTDATE
+  AND ext.RUNDATE  <pa.EFFECTIVEENDDATE
+  )
+UNION
+SELECT NULL PMPROCONTRACTID,
+  NULL PMPROPRODUCERID,
+  NULL PMPROPRODUCERTYPE,
+  NULL PMPRODATEEFF,
+  NULL PMPRODATEEXP,
+  p.name TCMPPOSITIONID
+FROM
+  (SELECT DISTINCT positionseq FROM AIGIEXT.CS_REDUCEPOSITIONS
+  ) rp,
+  TCMP.CS_POSITION p,
+  AIGIEXT.EXT_CURRENT_STATUS ext
+WHERE p.TENANTID  ='AIGI'
+AND rp.POSITIONSEQ=p.RULEELEMENTOWNERSEQ
+AND p.REMOVEDATE  =to_date('01-JAN-2200','dd-MON-yyyy')
+AND ext.RUNDATE  >=p.EFFECTIVESTARTDATE
+AND ext.RUNDATE   <p.EFFECTIVEENDDATE
+AND p.PAYEESEQ   IS NULL
+AND p.name NOT LIKE '%HierRoot%'
+AND NOT EXISTS
+  (SELECT 1 FROM PMPRO.CONTRACT c WHERE c.contractid=p.name
+  )
+ORDER BY 2
+
+Subreport 23-
+select  * from AIGIEXT.EXT_SYNC_POS_ACCURACY
+
+
